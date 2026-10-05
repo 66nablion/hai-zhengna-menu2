@@ -15,6 +15,7 @@ type CartItem = MenuItem & {
   type: string;
   price: number;
   qty: number;
+  note: string;
 };
 
 type DeliveryInfo = {
@@ -29,6 +30,7 @@ type DeliveryInfo = {
 export default function RestaurantMenu() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orderType, setOrderType] = useState('delivery');
+  const [justAdded, setJustAdded] = useState<string | null>(null);
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo>({
     area: '', street: '', building: '', floor: '', apartment: '', phone: ''
   });
@@ -85,19 +87,19 @@ export default function RestaurantMenu() {
       category: "الوجبات",
       image: "/images/menu/meals.jpg",
       items: [
-        { id: 30, name: "وجبة أقاشي لحم (3 أسياخ)", price: 230 },
-        { id: 31, name: "وجبة أقاشي فراخ (3 أسياخ)", price: 200 },
-        { id: 32, name: "وجبة أقاشي سمك (3 أسياخ)", price: 235 },
-        { id: 33, name: "وجبة شيش طاووق (3 أسياخ)", price: 235 },
-        { id: 34, name: "وجبة شيش كباب (3 أسياخ)", price: 320 },
-        { id: 35, name: "وجبة كفتة (3 أسياخ)", price: 280 },
-        { id: 36, name: "وجبة كريسبي", price: 250 },
-        { id: 37, name: "فرخة كاملة مشوية على الجمر", price: 390 },
-        { id: 38, name: "نصف فرخة مشوية على الجمر", price: 210 },
-        { id: 39, name: "فرخة كاملة أقانشي", price: 435 },
-        { id: 40, name: "نصف فرخة أقانشي", price: 235 },
-        { id: 41, name: "طبق بطاطس", price: 60 },
-        { id: 42, name: "طبق بطاطس بالجبنة", price: 85 }
+        { id: 30, name: "وجبة أقاشي لحم (3 أسياخ)", ordinary: 230 },
+        { id: 31, name: "وجبة أقاشي فراخ (3 أسياخ)", ordinary: 200 },
+        { id: 32, name: "وجبة أقاشي سمك (3 أسياخ)", ordinary: 235 },
+        { id: 33, name: "وجبة شيش طاووق (3 أسياخ)", ordinary: 235 },
+        { id: 34, name: "وجبة شيش كباب (3 أسياخ)", ordinary: 320 },
+        { id: 35, name: "وجبة كفتة (3 أسياخ)", ordinary: 280 },
+        { id: 36, name: "وجبة كريسبي", ordinary: 250 },
+        { id: 37, name: "فرخة كاملة مشوية على الجمر", ordinary: 390 },
+        { id: 38, name: "نصف فرخة مشوية على الجمر", ordinary: 210 },
+        { id: 39, name: "فرخة كاملة أقاشي", ordinary: 435 },
+        { id: 40, name: "نصف فرخة أقاشي", ordinary: 235 },
+        { id: 41, name: "طبق بطاطس", ordinary: 60 },
+        { id: 42, name: "طبق بطاطس بالجبنة", ordinary: 85 }
       ]
     },
     {
@@ -114,8 +116,8 @@ export default function RestaurantMenu() {
       category: "سلطات",
       image: "/images/menu/salads.jpg",
       items: [
-        { id: 47, name: "سلطة دقوة", price: 50 },
-        { id: 48, name: "سلطة خضراء", price: 40 },
+        { id: 47, name: "سلطة دكوة", price: 30 },
+        { id: 48, name: "سلطة خضراء", price: 50 },
         { id: 49, name: "سلطة طحينية", price: 30 },
         { id: 50, name: "مخلل", price: 30 },
         { id: 51, name: "زيادة بصل وليمون", price: 20 },
@@ -192,14 +194,17 @@ export default function RestaurantMenu() {
     }
   ];
 
-  const addToCart = (item: MenuItem, type: string = 'طلب', price: number) => {
+  const addToCart = (item: MenuItem, type: string, price: number) => {
+    const key = `${item.id}-${type}`;
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id && i.type === type);
       if (existing) {
         return prev.map(i => i.id === item.id && i.type === type ? { ...i, qty: i.qty + 1 } : i);
       }
-      return [...prev, { ...item, type, price, qty: 1 }];
+      return [...prev, { ...item, type, price, qty: 1, note: '' }];
     });
+    setJustAdded(key);
+    setTimeout(() => setJustAdded(prev => prev === key ? null : prev), 800);
   };
 
   const updateQty = (id: number, type: string, delta: number) => {
@@ -214,27 +219,47 @@ export default function RestaurantMenu() {
     });
   };
 
+  const updateNote = (id: number, type: string, note: string) => {
+    setCart(prev => prev.map(item =>
+      item.id === id && item.type === type ? { ...item, note } : item
+    ));
+  };
+
+  const removeItem = (id: number, type: string) => {
+    setCart(prev => prev.filter(item => !(item.id === id && item.type === type)));
+  };
+
+  const clearCart = () => {
+    if (confirm('هل أنت متأكد من تفريغ السلة؟')) setCart([]);
+  };
+
+  const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
   const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
 
   const sendToWhatsApp = () => {
     if (orderType !== 'delivery') return;
-    let message = `*طلب جديد من مطعم هاي زنغنا - فرع الدقي*%0A`;
-    message += `نوع الطلب: دليفري 🛵%0A%0A`;
-    message += `*الطلبات:*%0A`;
+    let text = `*طلب جديد من مطعم هاي زنغنا - فرع الدقي*\n`;
+    text += `نوع الطلب: دليفري 🛵\n\n`;
+    text += `*الطلبات:*\n`;
     cart.forEach(i => {
-      message += `- ${i.name} (${i.type}) × ${i.qty} = ${i.price * i.qty} ج.س%0A`;
+      text += `- ${i.name} (${i.type}) × ${i.qty} = ${i.price * i.qty} ج.س`;
+      if (i.note && i.note.trim()) text += `\n  📝 ${i.note}`;
+      text += `\n`;
     });
-    message += `%0A*الإجمالي:* ${totalAmount} ج.س%0A%0A`;
-    message += `*بيانات التوصيل:*%0A`;
-    message += `المنطقة: ${deliveryInfo.area}%0A`;
-    message += `الشارع: ${deliveryInfo.street}%0A`;
-    message += `رقم العمارة: ${deliveryInfo.building}%0A`;
-    message += `الدور: ${deliveryInfo.floor} | الشقة: ${deliveryInfo.apartment}%0A`;
-    message += `رقم التلفون: ${deliveryInfo.phone}`;
+    text += `\n*الإجمالي:* ${totalAmount} ج.س\n\n`;
+    text += `*بيانات التوصيل:*\n`;
+    text += `المنطقة: ${deliveryInfo.area}\n`;
+    text += `الشارع: ${deliveryInfo.street}\n`;
+    text += `رقم العمارة: ${deliveryInfo.building}\n`;
+    text += `الدور: ${deliveryInfo.floor} | الشقة: ${deliveryInfo.apartment}\n`;
+    text += `رقم التلفون: ${deliveryInfo.phone}`;
 
-    const url = `https://wa.me/201140672440?text=${message}`;
+    const url = `https://wa.me/201140672440?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
+
+  const btnClass = (key: string, base: string) =>
+    `${justAdded === key ? 'bg-green-500 text-white scale-105' : base} transition-all duration-300`;
 
   return (
     <main
@@ -247,12 +272,9 @@ export default function RestaurantMenu() {
           <p className="text-amber-100 text-lg">فرع الدقي - المنيو الكلاسيكي الأصلي</p>
         </header>
 
-        {/* عرض أقسام المنيو كاملة */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
           {menuSections.map((sec) => (
             <div key={sec.category} className="relative bg-[#2c1507]/90 border border-amber-600/50 p-5 pt-12 rounded-2xl shadow-2xl backdrop-blur-sm">
-
-              {/* صورة القسم - متداخلة مع الحد العلوي في النص */}
               <div className="absolute -top-10 left-1/2 -translate-x-1/2">
                 <img
                   src={sec.image}
@@ -261,39 +283,54 @@ export default function RestaurantMenu() {
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
               </div>
-
               <h2 className="text-xl font-bold text-amber-300 mb-4 border-b border-amber-700/50 pb-2 text-center">
                 {sec.category}
               </h2>
-
               <div className="space-y-3">
                 {sec.items.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between bg-[#1a0c04]/80 p-3 rounded-xl border border-amber-900/40">
-                    <span className="font-medium text-amber-100 text-sm">{item.name}</span>
-                    <div className="flex gap-2 text-xs">
+                  <div key={item.id} className="flex items-center justify-between bg-[#1a0c04]/80 p-3 rounded-xl border border-amber-900/40 gap-2">
+                    <span className="font-medium text-amber-100 text-sm flex-shrink-0">{item.name}</span>
+                    <div className="flex gap-2 text-xs flex-wrap justify-end">
                       {item.price !== undefined && (
-                        <button onClick={() => addToCart(item, 'أساسي', item.price!)} className="bg-amber-600 hover:bg-amber-500 text-zinc-950 font-bold px-3 py-1 rounded">
-                          السعر: {item.price} ج.س
+                        <button
+                          onClick={() => addToCart(item, 'السعر', item.price!)}
+                          className={btnClass(`${item.id}-السعر`, 'bg-amber-600 hover:bg-amber-500 text-zinc-950') + ' font-bold px-3 py-1 rounded'}
+                        >
+                          {justAdded === `${item.id}-السعر` ? '✓ تم' : `السعر: ${item.price}`}
                         </button>
                       )}
                       {item.ordinary !== undefined && item.ordinary !== null && item.small === undefined && (
-                        <button onClick={() => addToCart(item, 'عادي', item.ordinary!)} className="bg-amber-900/90 hover:bg-amber-700 text-amber-200 px-2 py-1 rounded">
-                          عادي: {item.ordinary}
+                        <button
+                          onClick={() => addToCart(item, item.jumbo ? 'عادي' : 'السعر', item.ordinary!)}
+                          className={btnClass(`${item.id}-${item.jumbo ? 'عادي' : 'السعر'}`, 'bg-amber-900/90 hover:bg-amber-700 text-amber-200') + ' px-2 py-1 rounded'}
+                        >
+                          {justAdded === `${item.id}-${item.jumbo ? 'عادي' : 'السعر'}`
+                            ? '✓ تم'
+                            : (item.jumbo ? `عادي: ${item.ordinary}` : `السعر: ${item.ordinary}`)}
                         </button>
                       )}
                       {item.jumbo !== undefined && item.jumbo !== null && (
-                        <button onClick={() => addToCart(item, 'جامبو', item.jumbo!)} className="bg-amber-600 hover:bg-amber-500 text-zinc-950 font-bold px-2 py-1 rounded">
-                          جامبو: {item.jumbo}
+                        <button
+                          onClick={() => addToCart(item, 'جامبو', item.jumbo!)}
+                          className={btnClass(`${item.id}-جامبو`, 'bg-amber-600 hover:bg-amber-500 text-zinc-950') + ' font-bold px-2 py-1 rounded'}
+                        >
+                          {justAdded === `${item.id}-جامبو` ? '✓ تم' : `جامبو: ${item.jumbo}`}
                         </button>
                       )}
                       {item.small !== undefined && (
-                        <button onClick={() => addToCart(item, 'وسط', item.small!)} className="bg-amber-900/90 hover:bg-amber-700 text-amber-200 px-2 py-1 rounded">
-                          وسط: {item.small}
+                        <button
+                          onClick={() => addToCart(item, 'وسط', item.small!)}
+                          className={btnClass(`${item.id}-وسط`, 'bg-amber-900/90 hover:bg-amber-700 text-amber-200') + ' px-2 py-1 rounded'}
+                        >
+                          {justAdded === `${item.id}-وسط` ? '✓ تم' : `وسط: ${item.small}`}
                         </button>
                       )}
                       {item.medium !== undefined && (
-                        <button onClick={() => addToCart(item, 'كبير', item.medium!)} className="bg-amber-600 hover:bg-amber-500 text-zinc-950 font-bold px-2 py-1 rounded">
-                          كبير: {item.medium}
+                        <button
+                          onClick={() => addToCart(item, 'كبير', item.medium!)}
+                          className={btnClass(`${item.id}-كبير`, 'bg-amber-600 hover:bg-amber-500 text-zinc-950') + ' font-bold px-2 py-1 rounded'}
+                        >
+                          {justAdded === `${item.id}-كبير` ? '✓ تم' : `كبير: ${item.medium}`}
                         </button>
                       )}
                     </div>
@@ -304,28 +341,46 @@ export default function RestaurantMenu() {
           ))}
         </div>
 
-        {/* سلة الطلبات */}
         <div className="bg-[#2c1507]/95 border border-amber-500 p-6 rounded-2xl shadow-2xl backdrop-blur-md">
-          <h2 className="text-2xl font-bold text-amber-300 mb-4">🛒 سلة الطلبات</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-amber-300">
+              🛒 سلة الطلبات {totalItems > 0 && <span className="text-lg bg-amber-500 text-zinc-950 px-2 py-0.5 rounded-full">({totalItems})</span>}
+            </h2>
+            {cart.length > 0 && (
+              <button onClick={clearCart} className="text-xs bg-red-900/60 hover:bg-red-800 text-red-100 px-3 py-1.5 rounded-lg">
+                🗑️ تفريغ السلة
+              </button>
+            )}
+          </div>
 
           {cart.length === 0 ? (
             <p className="text-amber-200/60 mb-6">السلة فارغة، اختر وجباتك من المنيو بالأعلى.</p>
           ) : (
             <div className="space-y-3 mb-6">
               {cart.map((item, i) => (
-                <div key={i} className="flex justify-between items-center border-b border-amber-900/50 pb-3 text-sm">
-                  <div>
-                    <span className="font-bold text-amber-100">{item.name}</span>
-                    <span className="text-amber-300 text-xs block">({item.type}) - {item.price} ج.س</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center bg-amber-950 border border-amber-700 rounded-lg overflow-hidden">
-                      <button onClick={() => updateQty(item.id, item.type, -1)} className="px-2.5 py-1 bg-amber-900 hover:bg-amber-700 text-amber-100 font-bold">-</button>
-                      <span className="px-3 text-amber-100 font-bold">{item.qty}</span>
-                      <button onClick={() => updateQty(item.id, item.type, 1)} className="px-2.5 py-1 bg-amber-700 hover:bg-amber-600 text-amber-50 font-bold">+</button>
+                <div key={i} className="border-b border-amber-900/50 pb-3 text-sm">
+                  <div className="flex justify-between items-center gap-3">
+                    <div className="flex-1">
+                      <span className="font-bold text-amber-100">{item.name}</span>
+                      <span className="text-amber-300 text-xs block">({item.type}) - {item.price} ج.س</span>
                     </div>
-                    <span className="text-amber-400 font-bold w-16 text-left">{item.price * item.qty} ج.س</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center bg-amber-950 border border-amber-700 rounded-lg overflow-hidden">
+                        <button onClick={() => updateQty(item.id, item.type, -1)} className="px-2.5 py-1 bg-amber-900 hover:bg-amber-700 text-amber-100 font-bold">-</button>
+                        <span className="px-3 text-amber-100 font-bold">{item.qty}</span>
+                        <button onClick={() => updateQty(item.id, item.type, 1)} className="px-2.5 py-1 bg-amber-700 hover:bg-amber-600 text-amber-50 font-bold">+</button>
+                      </div>
+                      <span className="text-amber-400 font-bold w-16 text-left">{item.price * item.qty} ج.س</span>
+                      <button onClick={() => removeItem(item.id, item.type)} className="text-red-400 hover:text-red-300 text-lg font-bold px-1" title="حذف">✕</button>
+                    </div>
                   </div>
+                  <input
+                    type="text"
+                    value={item.note}
+                    onChange={(e) => updateNote(item.id, item.type, e.target.value)}
+                    placeholder="📝 ملاحظة (مثال: بدون زيتون، فطيرة بدل عيش)"
+                    className="mt-2 w-full p-2 bg-amber-950/60 border border-amber-800/60 rounded-lg text-amber-100 text-xs focus:outline-none focus:border-amber-500"
+                  />
                 </div>
               ))}
               <div className="flex justify-between text-xl font-bold text-amber-300 pt-3 border-t border-amber-600">
@@ -335,21 +390,15 @@ export default function RestaurantMenu() {
             </div>
           )}
 
-          {/* نوع الطلب */}
           <div className="flex gap-4 mb-6">
-            <button
-              onClick={() => setOrderType('delivery')}
-              className={`flex-1 py-3 rounded-xl font-bold transition ${orderType === 'delivery' ? 'bg-amber-500 text-zinc-950 shadow-lg' : 'bg-amber-950 text-amber-300'}`}>
+            <button onClick={() => setOrderType('delivery')} className={`flex-1 py-3 rounded-xl font-bold transition ${orderType === 'delivery' ? 'bg-amber-500 text-zinc-950 shadow-lg' : 'bg-amber-950 text-amber-300'}`}>
               دليفري 🛵
             </button>
-            <button
-              onClick={() => setOrderType('dine-in')}
-              className={`flex-1 py-3 rounded-xl font-bold transition ${orderType === 'dine-in' ? 'bg-amber-500 text-zinc-950 shadow-lg' : 'bg-amber-950 text-amber-300'}`}>
+            <button onClick={() => setOrderType('dine-in')} className={`flex-1 py-3 rounded-xl font-bold transition ${orderType === 'dine-in' ? 'bg-amber-500 text-zinc-950 shadow-lg' : 'bg-amber-950 text-amber-300'}`}>
               استلام من الصالة 🍽️
             </button>
           </div>
 
-          {/* حقول الدليفري */}
           {orderType === 'delivery' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-[#1a0c04] p-4 rounded-xl border border-amber-700">
               <input type="text" placeholder="اسم المنطقة" value={deliveryInfo.area} onChange={e => setDeliveryInfo({...deliveryInfo, area: e.target.value})} className="p-2.5 bg-zinc-900 border border-amber-800 rounded-lg text-amber-100 text-sm focus:outline-none focus:border-amber-500" />
@@ -361,7 +410,6 @@ export default function RestaurantMenu() {
             </div>
           )}
 
-          {/* زر الواتساب */}
           <button
             onClick={sendToWhatsApp}
             disabled={orderType !== 'delivery' || cart.length === 0}
@@ -369,7 +417,8 @@ export default function RestaurantMenu() {
               orderType === 'delivery' && cart.length > 0
                 ? 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer'
                 : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-            }`}>
+            }`}
+          >
             {orderType === 'delivery' ? 'إرسال الطلب عبر الواتساب 📱' : 'الطلب في الصالة لا يتطلب إرسال واتساب 🍽️'}
           </button>
         </div>
